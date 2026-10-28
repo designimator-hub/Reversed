@@ -54,6 +54,14 @@ Without the beta-scaled move limit, a beta step in the projection run let one de
 
 MMA reaches a 1.8 % stiffer design here. Both use the same filter, solver and stopping rule.
 
+## Local optima and round-off sensitivity (found by CI, 2026-10-28)
+
+On the 24x8x2 cantilever, the GitHub runners (Python 3.10 and 3.12) gave OC compliance 358.8, while this container gave 382.1. Repeating the run with the starting design changed by 1e-10 gave OC results of 359.2, 350.8, 350.8, 350.7 and 350.8. MMA gave 383.32 in every case.
+
+- OC's trajectory is chaotic here. Round-off picks the local optimum, and on this problem some of those optima are 9 % stiffer than MMA's.
+- MMA is reproducible, but it can settle in a worse local optimum. On 60x20x4, MMA was the better of the two by 1.8 %.
+- Consequence for the product: one run is one sample from a landscape with many optima. That makes the case for multi-start or replica-exchange outcome generation (methods doc section 6.5). `optimize(..., x0=...)` now accepts a starting design to support it.
+
 ## Measured performance (4-core cloud container, CPU only)
 
 | Problem | Free DOFs | Sparse LU | Multigrid-PCG |

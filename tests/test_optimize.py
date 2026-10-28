@@ -54,12 +54,26 @@ def test_update_solves_analytic_problem(method):
     assert np.allclose(x, exact, rtol=2e-3)
 
 
-def test_mma_matches_oc_on_cantilever():
-    """Two independent update schemes must reach essentially the same optimum."""
+def test_mma_and_oc_reach_comparable_local_optima():
+    """Compliance minimization is non-convex, so two schemes may stop in different local
+    optima. Measured on this problem (2026-10-28): MMA 383.3 on every platform; OC between
+    350.7 and 382.1 depending on round-off (see test below and docs/solver.md)."""
     r_oc = optimize(cantilever(24, 8, 2, optimizer="oc", max_iter=300))
     r_mma = optimize(cantilever(24, 8, 2, optimizer="mma", max_iter=300))
     assert r_oc.converged and r_mma.converged
-    assert r_mma.compliance == pytest.approx(r_oc.compliance, rel=0.02)
+    assert r_mma.compliance == pytest.approx(r_oc.compliance, rel=0.12)
+    for r in (r_oc, r_mma):
+        assert r.compliance < 0.2 * r.history[0].compliance
+
+
+def test_mma_is_stable_under_tiny_perturbations():
+    """MMA's result must not depend on round-off: a 1e-10 change to the start must not move
+    the converged compliance. (OC fails this on the same problem, measured spread 9 %.)"""
+    p = cantilever(24, 8, 2, optimizer="mma", max_iter=300)
+    ne = p.grid.n_elements
+    base = optimize(p)
+    nudged = optimize(p, x0=0.3 + 1e-10 * np.random.default_rng(14).standard_normal(ne))
+    assert nudged.compliance == pytest.approx(base.compliance, rel=1e-4)
 
 
 @pytest.fixture(scope="module")

@@ -142,11 +142,19 @@ class ComplianceModel:
 def optimize(
     problem: Problem,
     callback: Callable[[IterationRecord, FloatArray], None] | None = None,
+    x0: FloatArray | None = None,
 ) -> Result:
+    """Run SIMP. ``x0`` optionally sets the starting design (flat, one value per element),
+    which allows warm starts and multi-start searches."""
     s = problem.settings
     model = ComplianceModel(problem)
     ne = model.grid.n_elements
-    x: FloatArray = np.full(ne, s.volume_fraction, dtype=np.float64)
+    if x0 is not None:
+        x = np.clip(np.asarray(x0, dtype=np.float64).ravel(), 0.0, 1.0)
+        if x.size != ne:
+            raise ValueError(f"x0 has {x.size} values, grid has {ne} elements")
+    else:
+        x = np.full(ne, s.volume_fraction, dtype=np.float64)
     x[model.solid] = 1.0
     x[model.void] = 0.0
 
