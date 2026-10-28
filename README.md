@@ -18,6 +18,15 @@ reversed-solve examples/cantilever.json --out results/cantilever
 
 Outputs: `x_phys.npy` (densities), `x_phys.vtk` (ParaView), `surface.stl` (Blender, Fusion, slicers) and `summary.json` (iteration history).
 
+## On the GPU machine
+
+```bash
+pip install -e ".[dev]"          # includes warp-lang
+python scripts/gpu_check.py      # verifies the GPU solve against the CPU, then times sizes
+```
+
+To run an optimization on the GPU, set `"solver": "warp32"` (fast, float32) or `"warp"` (float64) in a job's settings.
+
 ## Job specification
 
 A job is one JSON file: grid size, voxel size, fixtures, load cases, keep/avoid regions, material and settings. Regions are boxes in physical coordinates. See `examples/` and `src/reversed_core/problem.py`.

@@ -66,7 +66,7 @@ class Settings:
     move: float = 0.2
     max_iter: int = 200
     tol: float = 0.01
-    solver: str = "auto"
+    solver: str = "auto"  # auto | direct | cg | mg | warp (float64) | warp32
     optimizer: str = "mma"  # "mma" or "oc"
 
 

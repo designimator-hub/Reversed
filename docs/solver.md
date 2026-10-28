@@ -9,6 +9,7 @@ Package: `src/reversed_core`. This is the CPU reference path. Every later backen
 | Element stiffness | `element.py` | Trilinear hex8, 2x2x2 Gauss (exact for bricks) | Zienkiewicz, Taylor & Zhu (2013); Hughes (2000) |
 | Assembly | `fe.py` | Vectorized COO with fixed sparsity pattern | Andreassen et al. (2011) |
 | Linear solve | `fe.py`, `multigrid.py` | Sparse LU below 25k free DOFs, multigrid-PCG above | Amir, Aage & Lazarov (2014) |
+| Linear solve, GPU | `warp_backend.py` | Matrix-free element-by-element K·u with Jacobi-PCG (float32 or float64) | Wu, Dick & Westermann (2016); NVIDIA Warp |
 | Interpolation | `simp.py` | SIMP, E = E_min + x^p (E − E_min) | Bendsøe (1989); Sigmund (2001) |
 | Filter | `filters.py` | Linear cone density filter | Bourdin (2001) |
 | Projection (optional) | `filters.py` | Smoothed Heaviside with beta continuation | Wang, Lazarov & Sigmund (2011) |
@@ -27,6 +28,9 @@ The equations are written out in each module's docstring next to the code that i
 | Reactions balance applied load | Global equilibrium | pass to 1e-9 |
 | Direct vs Jacobi-CG vs multigrid-PCG | Solvers agree | pass to 1e-7 relative |
 | Multigrid: prolongation exact for affine fields, V-cycle symmetric | Valid CG preconditioner | pass |
+| Warp matrix-free K·u vs assembled matrix | GPU kernel is the same operator | agree to 1e-13 (measured 6e-16) |
+| Warp solve vs direct, float64 and float32 | GPU path gives the same displacements | measured 2e-10 (f64), 8e-5 (f32) |
+| Warp compliance and gradient vs CPU reference | Optimizer sees identical numbers on GPU | rel. 1e-7 |
 | **Independent code: pyMOTO (TU Delft)** | Element spectrum and heterogeneous cantilever compliance | agree to 1e-10 (measured 13 digits) |
 | Filter: preserves constants, adjoint consistency, weights by formula | Filter and its chain rule are correct | pass |
 | Heaviside: endpoints, derivative vs finite differences | Projection gradient correct | pass |
@@ -40,6 +44,15 @@ The equations are written out in each module's docstring next to the code that i
 ### Bug found by the checks during development
 
 Without the beta-scaled move limit, a beta step in the projection run let one design update flip whole members. The load path disconnected and compliance rose about 40-fold (16 801 against 383) while the design looked crisp. The fix scales the move limit by min(1, 4/β). The reasoning is in `simp.py`, and `test_projection_gives_crisp_connected_design` guards against it coming back.
+
+## Benchmark run: Liu and Tovar cantilever (60x20x4, f = 0.3, p = 3, r_min = 1.5)
+
+| Optimizer | Iterations to converge (max change ≤ 0.01) | Final compliance |
+|---|---|---|
+| MMA | 256 | 94.84 |
+| OC | 265 | 96.62 |
+
+MMA reaches a 1.8 % stiffer design here. Both use the same filter, solver and stopping rule.
 
 ## Measured performance (4-core cloud container, CPU only)
 
@@ -57,7 +70,8 @@ The Liu and Tovar (2014) and Ferrari and Sigmund (2020) papers print benchmark r
 
 ## Known limits (honest list)
 
-- CPU only so far; the Warp GPU backend is next.
+- The Warp backend has been verified only on Warp's CPU device in this session (no GPU here). `scripts/gpu_check.py` verifies and times it on a CUDA machine.
+- The GPU path uses Jacobi preconditioning; matrix-free multigrid on the GPU is the next step. On the CPU, multigrid needed 11 CG iterations where Jacobi needed 398 for the uniform 60x20x4 case, so a large cut in GPU iterations is expected but not yet measured.
 - Assembled matrices: the index arrays, values and CSR matrix take about 20 KB per element. That allows roughly 700 000 elements in 16 GB on CPU. The matrix-free GPU version removes this limit.
 - Only cubic voxels, linear elasticity, compliance objective, one volume constraint.
 - No stress constraint, overhang filter or symmetry planes yet (methods doc sections 1.5 and 10).
@@ -75,6 +89,7 @@ The Liu and Tovar (2014) and Ferrari and Sigmund (2020) papers print benchmark r
 - Hughes, T.J.R. (2000). The Finite Element Method: Linear Static and Dynamic Finite Element Analysis. Dover.
 - Liu, K., Tovar, A. (2014). An efficient 3D topology optimization code written in Matlab. Struct. Multidisc. Optim. 50, 1175–1196.
 - Lorensen, W.E., Cline, H.E. (1987). Marching cubes: a high resolution 3D surface construction algorithm. Computer Graphics 21(4), 163–169.
+- NVIDIA Warp, Python framework for GPU simulation. https://github.com/NVIDIA/warp
 - pyMOTO, Modular Topology Optimization framework in Python. https://github.com/aatmdelissen/pyMOTO
 - Sigmund, O. (2001). A 99 line topology optimization code written in Matlab. Struct. Multidisc. Optim. 21, 120–127.
 - Svanberg, K. (1987). The method of moving asymptotes: a new method for structural optimization. Int. J. Numer. Methods Eng. 24, 359–373.

@@ -16,6 +16,6 @@
     "r_min": 1.5,
     "projection": false,
     "optimizer": "mma",
-    "max_iter": 200
+    "max_iter": 300
   }
 }

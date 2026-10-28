@@ -88,8 +88,18 @@ class ComplianceModel:
         self.free = np.setdiff1d(np.arange(self.grid.n_dofs), fixed)
         self.F = problem.force_matrix()
         self.weights = np.array([lc.weight for lc in problem.load_cases])
-        self.solver = LinearSolver(self.free, problem.settings.solver,  # type: ignore[arg-type]
-                                   grid=self.grid)
+        self.warp = None
+        if problem.settings.solver.startswith("warp"):
+            import warp as wp
+
+            from .warp_backend import WarpSolver  # optional dependency: pip install .[gpu]
+
+            dtype = wp.float32 if problem.settings.solver == "warp32" else wp.float64
+            self.warp = WarpSolver(self.grid, self.KE, self.free, dtype=dtype,
+                                   rtol=1e-6 if dtype == wp.float32 else 1e-8)
+        else:
+            self.solver = LinearSolver(self.free, problem.settings.solver,  # type: ignore[arg-type]
+                                       grid=self.grid)
         self.solid, self.void = problem.passive_elements()
         self.beta = 1.0
         self.U: FloatArray | None = None
@@ -118,8 +128,10 @@ class ComplianceModel:
         p = self.problem.settings.penal
         xp = self.physical(x)
         Ee = self.E_min + xp**p * (self.E - self.E_min)
-        K = self.assembler.assemble(Ee)
-        U, self.last_stats = self.solver.solve(K, self.F)
+        if self.warp is not None:
+            U, self.last_stats = self.warp.solve(Ee, self.F)
+        else:
+            U, self.last_stats = self.solver.solve(self.assembler.assemble(Ee), self.F)
         self.U = U
         ce = element_energies(U, self.grid.edof, self.KE)  # (ne, n_cases)
         c = float(np.sum(self.weights * np.sum(Ee[:, None] * ce, axis=0)))
@@ -134,7 +146,7 @@ def optimize(
     s = problem.settings
     model = ComplianceModel(problem)
     ne = model.grid.n_elements
-    x = np.full(ne, s.volume_fraction)
+    x: FloatArray = np.full(ne, s.volume_fraction, dtype=np.float64)
     x[model.solid] = 1.0
     x[model.void] = 0.0
 

@@ -89,8 +89,8 @@ class MMA:
                  asyinit: float = 0.5, asyincr: float = 1.2, asydecr: float = 0.7) -> None:
         self.n = n
         self.move = move
-        self.xmin = np.full(n, xmin)
-        self.xmax = np.full(n, xmax)
+        self.xmin: FloatArray = np.full(n, xmin, dtype=np.float64)
+        self.xmax: FloatArray = np.full(n, xmax, dtype=np.float64)
         self.asyinit, self.asyincr, self.asydecr = asyinit, asyincr, asydecr
         self.reset()
 
@@ -98,8 +98,8 @@ class MMA:
         self.k = 0
         self.xold1: FloatArray | None = None
         self.xold2: FloatArray | None = None
-        self.low = self.xmin.copy()
-        self.upp = self.xmax.copy()
+        self.low: FloatArray = self.xmin.copy()
+        self.upp: FloatArray = self.xmax.copy()
 
     def _asymptotes(self, x: FloatArray) -> None:
         span = self.xmax - self.xmin
