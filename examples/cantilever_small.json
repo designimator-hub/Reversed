@@ -1,0 +1,14 @@
+{
+  "nelx": 24,
+  "nely": 8,
+  "nelz": 2,
+  "h": 1.0,
+  "fixtures": [
+    {"box": {"lo": [0, 0, 0], "hi": [0, 8, 2]}, "dofs": "xyz"}
+  ],
+  "load_cases": [
+    {"loads": [{"box": {"lo": [24, 0, 0], "hi": [24, 0, 2]}, "force": [0, -1, 0]}]}
+  ],
+  "settings": {"volume_fraction": 0.3, "r_min": 1.5, "projection": true, "beta_max": 16,
+               "max_iter": 300}
+}

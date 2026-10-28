@@ -1,0 +1,21 @@
+{
+  "nelx": 60,
+  "nely": 20,
+  "nelz": 4,
+  "h": 1.0,
+  "fixtures": [
+    {"box": {"lo": [0, 0, 0], "hi": [0, 20, 4]}, "dofs": "xyz"}
+  ],
+  "load_cases": [
+    {"loads": [{"box": {"lo": [60, 0, 0], "hi": [60, 0, 4]}, "force": [0, -1, 0]}]}
+  ],
+  "material": {"E": 1.0, "nu": 0.3},
+  "settings": {
+    "volume_fraction": 0.3,
+    "penal": 3.0,
+    "r_min": 1.5,
+    "projection": false,
+    "optimizer": "mma",
+    "max_iter": 200
+  }
+}
